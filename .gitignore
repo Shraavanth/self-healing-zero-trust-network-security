@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+=======
+
+# Local Database & Logs for Zero-Trust Engine
+zero_trust.db
+*.db
+
