@@ -1,0 +1,2 @@
+# Phishing and Spoofing Detection Package
+# initializes the phishing and spoofing detection package, which includes modules for detecting ARP spoofing attacks. The package provides functionality to analyze network packets and identify suspicious behavior based on extracted features.
