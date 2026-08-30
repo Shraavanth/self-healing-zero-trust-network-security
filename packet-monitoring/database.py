@@ -7,6 +7,7 @@ This module handles database operations for storing
 captured network packets.
 """
 
+import json
 import sqlite3
 import os
 from datetime import datetime
@@ -220,3 +221,31 @@ def get_packets_by_ip(ip_address):
     
     conn.close()
     return packets
+
+def write_security_events_to_db(detection_result_json):
+    """
+    Import security events from JSON file into SQLite database.
+    
+    Args:
+        detection_result_json (dict): JSON data containing security events
+    """
+     # Initialize database
+    init_database()
+    print("Database initialized.\n")
+    
+    # Check if the database file exists
+    if not os.path.exists(DB_FILE):
+        print(f"Database file '{DB_FILE}' does not exist. Please initialize the database first.")
+        return
+    
+    # Read the JSON file
+    #with open(json_file_path, 'r') as f:
+    events = json.load(detection_result_json)
+    
+    # Insert each event into the database
+    for event in events:
+        insert_detection(event)
+        print(f"Inserted: {event.get('attack_type', 'INFO')} - {event.get('message')}")
+    
+    print(f"\nTotal events imported: {len(events)}")
+
