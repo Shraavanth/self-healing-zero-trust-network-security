@@ -248,3 +248,281 @@ def write_security_events_to_db(detection_result_json):
     
     print(f"\nTotal events imported: {len(events)}")
 
+
+# =====================================================
+# DETECTION GET METHODS
+# =====================================================
+
+def get_detection_count():
+    """
+    Get the total number of detections stored in the database.
+    
+    Returns:
+        int: Total detection count
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM detections")
+    count = cursor.fetchone()[0]
+    
+    conn.close()
+    return count
+
+
+def get_all_detections():
+    """
+    Retrieve all detections from the database.
+    
+    Returns:
+        list: List of detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM detections ORDER BY timestamp DESC")
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_detections_by_type(attack_type):
+    """
+    Retrieve detections filtered by attack type.
+    
+    Args:
+        attack_type (str): Attack type to filter by (e.g., 'POSSIBLE_ARP_SPOOFING', 
+                          'POSSIBLE_DNS_SPOOFING', 'POSSIBLE_PHISHING')
+    
+    Returns:
+        list: List of matching detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT * FROM detections WHERE attack_type = ? ORDER BY timestamp DESC",
+        (attack_type,)
+    )
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_detections_by_severity(severity):
+    """
+    Retrieve detections filtered by severity level.
+    
+    Args:
+        severity (str): Severity level to filter by ('INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL')
+    
+    Returns:
+        list: List of matching detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT * FROM detections WHERE severity = ? ORDER BY timestamp DESC",
+        (severity,)
+    )
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_detections_by_source_ip(source_ip):
+    """
+    Retrieve detections from a specific source IP address.
+    
+    Args:
+        source_ip (str): Source IP address to search for
+    
+    Returns:
+        list: List of matching detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT * FROM detections WHERE source_ip = ? ORDER BY timestamp DESC",
+        (source_ip,)
+    )
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_detections_by_domain(domain):
+    """
+    Retrieve detections associated with a specific domain.
+    
+    Args:
+        domain (str): Domain to search for
+    
+    Returns:
+        list: List of matching detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT * FROM detections WHERE domain = ? ORDER BY timestamp DESC",
+        (domain,)
+    )
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_recent_detections(limit=10):
+    """
+    Retrieve the most recent detections.
+    
+    Args:
+        limit (int): Maximum number of recent detections to return (default: 10)
+    
+    Returns:
+        list: List of recent detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT * FROM detections ORDER BY timestamp DESC LIMIT ?",
+        (limit,)
+    )
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_detections_by_confidence(min_confidence=0.0, max_confidence=1.0):
+    """
+    Retrieve detections filtered by confidence score range.
+    
+    Args:
+        min_confidence (float): Minimum confidence score (0.0 to 1.0)
+        max_confidence (float): Maximum confidence score (0.0 to 1.0)
+    
+    Returns:
+        list: List of matching detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT * FROM detections 
+        WHERE confidence >= ? AND confidence <= ?
+        ORDER BY timestamp DESC
+    """, (min_confidence, max_confidence))
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_detections_by_risk_score(min_risk=0, max_risk=100):
+    """
+    Retrieve detections filtered by risk score range.
+    
+    Args:
+        min_risk (int): Minimum risk score (0 to 100)
+        max_risk (int): Maximum risk score (0 to 100)
+    
+    Returns:
+        list: List of matching detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT * FROM detections 
+        WHERE risk_score >= ? AND risk_score <= ?
+        ORDER BY timestamp DESC
+    """, (min_risk, max_risk))
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_high_risk_detections(risk_threshold=70):
+    """
+    Retrieve high-risk detections above a specified threshold.
+    
+    Args:
+        risk_threshold (int): Minimum risk score threshold (default: 70)
+    
+    Returns:
+        list: List of high-risk detection records as dictionaries
+    """
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT * FROM detections 
+        WHERE risk_score >= ?
+        ORDER BY risk_score DESC, timestamp DESC
+    """, (risk_threshold,))
+    detections = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return detections
+
+
+def get_detections_summary():
+    """
+    Get a summary of detections grouped by attack type and severity.
+    
+    Returns:
+        dict: Summary statistics with counts by type and severity
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Count by attack type
+    cursor.execute("""
+        SELECT attack_type, COUNT(*) as count 
+        FROM detections 
+        WHERE attack_type IS NOT NULL
+        GROUP BY attack_type
+    """)
+    by_type = {row[0]: row[1] for row in cursor.fetchall()}
+    
+    # Count by severity
+    cursor.execute("""
+        SELECT severity, COUNT(*) as count 
+        FROM detections 
+        GROUP BY severity
+    """)
+    by_severity = {row[0]: row[1] for row in cursor.fetchall()}
+    
+    # Total count
+    cursor.execute("SELECT COUNT(*) FROM detections")
+    total = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return {
+        "total": total,
+        "by_type": by_type,
+        "by_severity": by_severity
+    }
+
+
