@@ -48,6 +48,22 @@ def init_database():
             arp_dst_mac TEXT
         )
     """)
+
+    # Create detections table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS detections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            attack_type TEXT,
+            source_ip TEXT,
+            source_mac TEXT,
+            domain TEXT,
+            severity TEXT,
+            confidence REAL,
+            risk_score INTEGER,
+            message TEXT
+        )
+    """)
     
     conn.commit()
     conn.close()
@@ -90,6 +106,37 @@ def insert_packet(packet_data):
     conn.commit()
     conn.close()
 
+def insert_detection(detection_data):
+    """
+    Insert a detection record into the database.
+    
+    Args:
+        detection_data (dict): Dictionary containing detection information
+                           with keys: attack_type, source_ip, source_mac, domain,
+                           severity, confidence, risk_score, message
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO detections (
+            attack_type, source_ip, source_mac, domain,
+            severity, confidence, risk_score,
+            message
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        detection_data.get("attack_type"),
+        detection_data.get("source_ip"),
+        detection_data.get("source_mac"),
+        detection_data.get("domain"),
+        detection_data.get("severity"),
+        detection_data.get("confidence"),
+        detection_data.get("risk_score"),
+        detection_data.get("message")
+    ))
+
+    conn.commit()
+    conn.close()
 
 def get_packet_count():
     """
