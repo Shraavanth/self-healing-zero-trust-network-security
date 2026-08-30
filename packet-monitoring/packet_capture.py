@@ -48,7 +48,7 @@ from feature_extractor import extract_features
 from detection_engine import DetectionEngine
 from event_logger import EventLogger
 from security_statistics import SecurityStatistics
-
+from database import insert_detection
 
 # =====================================================
 # CREATE DETECTION ENGINE
@@ -426,6 +426,13 @@ def packet_callback(packet):
                 "[LOGGED] Security event saved"
             )
 
+            insert_detection(
+                detection_result.to_dict()
+            )
+
+            print(
+                "[DB] Security event inserted into database"
+            )
         except Exception as error:
 
             print(
@@ -548,3 +555,4 @@ def start_capture():
 if __name__ == "__main__":
 
     start_capture()
+
