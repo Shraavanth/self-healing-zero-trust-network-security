@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 
 
 # =====================================================
@@ -42,7 +43,7 @@ features_1 = {
 result_1 = detector.analyze(features_1)
 
 print("\n========== TEST 1 ==========")
-print(result_1)
+print(json.dumps(result_1, indent=2))
 
 
 # =====================================================
@@ -60,7 +61,7 @@ features_2 = {
 result_2 = detector.analyze(features_2)
 
 print("\n========== TEST 2 ==========")
-print(result_2)
+print(json.dumps(result_2, indent=2))
 
 
 # =====================================================
