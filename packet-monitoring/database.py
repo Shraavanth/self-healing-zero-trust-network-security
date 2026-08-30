@@ -222,7 +222,7 @@ def get_packets_by_ip(ip_address):
     conn.close()
     return packets
 
-def import_security_events(detection_result_json):
+def write_security_events_to_db(detection_result_json):
     """
     Import security events from JSON file into SQLite database.
     
