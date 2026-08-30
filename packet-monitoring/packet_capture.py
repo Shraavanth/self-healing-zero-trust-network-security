@@ -1,353 +1,550 @@
 """
 packet_capture.py
 -----------------
-Module 1 - Packet Monitoring
+Module 1 - Real-Time Security Monitoring
 
-This program captures live network packets using Scapy and
-displays basic packet information.
+Captures live network packets using Scapy,
+extracts security features, sends them to the
+unified Detection Engine, logs security events,
+and maintains security statistics.
 
 Author : Shraavanth
 """
 
-from scapy.all import sniff, IP, IPv6, TCP, UDP, ICMP, ARP, DNS, conf, Raw
-from config import INTERFACE, PACKET_LIMIT, LOG_FILE
-from database import init_database, insert_packet, DB_FILE
-from packet_parser import parse_packet
+import os
 import sys
 
+from scapy.all import sniff, IP, ARP, DNS
 
-def packet_callback(packet, log_file_handle):
+from config import INTERFACE, PACKET_LIMIT
+
+
+# =====================================================
+# PROJECT PATH SETUP
+# =====================================================
+
+CURRENT_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+PROJECT_ROOT = os.path.dirname(
+    CURRENT_DIR
+)
+
+DETECTION_DIR = os.path.join(
+    PROJECT_ROOT,
+    "phishing-spoofing-detection"
+)
+
+if DETECTION_DIR not in sys.path:
+    sys.path.append(DETECTION_DIR)
+
+
+# =====================================================
+# IMPORT PROJECT MODULES
+# =====================================================
+
+from feature_extractor import extract_features
+from detection_engine import DetectionEngine
+from event_logger import EventLogger
+from security_statistics import SecurityStatistics
+
+
+# =====================================================
+# CREATE DETECTION ENGINE
+# =====================================================
+
+detection_engine = DetectionEngine()
+
+
+# =====================================================
+# CREATE EVENT LOGGER
+# =====================================================
+
+event_logger = EventLogger()
+
+
+# =====================================================
+# CREATE SECURITY STATISTICS
+# =====================================================
+
+security_statistics = SecurityStatistics()
+
+
+# =====================================================
+# DISPLAY SECURITY EVENT
+# =====================================================
+
+def display_detection_event(event):
     """
-    This function is automatically called by Scapy
-    whenever a packet is captured. Logs packet info to console,
-    log file, and database. Handles multiple packet layer types.
+    Display a unified security detection event.
+
+    INFO events are displayed as informational events.
+    Actual detections are displayed as security alerts.
     """
 
-    output_lines = []
-    packet_info = {}
-    
-    # Determine packet layer type and extract relevant information
-    if packet.haslayer(ARP):
-        # ARP Layer
-        output_lines = _handle_arp_packet(packet)
-        packet_info = {'layer': 'ARP'}
-        
-    elif packet.haslayer(IP):
-        # IPv4 Layer - check for higher layer protocols
-        if packet.haslayer(TCP):
-            # TCP Layer
-            output_lines = _handle_tcp_packet(packet)
-            packet_info = {'layer': 'TCP'}
-            
-        elif packet.haslayer(UDP):
-            # UDP Layer - check for DNS
-            if packet.haslayer(DNS):
-                # DNS Layer (typically on UDP port 53)
-                output_lines = _handle_dns_packet(packet)
-                packet_info = {'layer': 'DNS'}
-            else:
-                # Generic UDP Layer
-                output_lines = _handle_udp_packet(packet)
-                packet_info = {'layer': 'UDP'}
-                
-        elif packet.haslayer(ICMP):
-            # ICMP Layer
-            output_lines = _handle_icmp_packet(packet)
-            packet_info = {'layer': 'ICMP'}
-            
-        else:
-            # IPv4 with Unknown upper layer protocol
-            output_lines = _handle_ip_packet(packet)
-            packet_info = {'layer': 'IPv4'}
-            
-    elif packet.haslayer(IPv6):
-        # IPv6 Layer - check for higher layer protocols
-        if packet.haslayer(TCP):
-            # TCP Layer over IPv6
-            output_lines = _handle_tcp_packet(packet)
-            packet_info = {'layer': 'TCP'}
-            
-        elif packet.haslayer(UDP):
-            # UDP Layer over IPv6 - check for DNS
-            if packet.haslayer(DNS):
-                # DNS Layer over IPv6
-                output_lines = _handle_dns_packet(packet)
-                packet_info = {'layer': 'DNS'}
-            else:
-                # Generic UDP Layer over IPv6
-                output_lines = _handle_udp_packet(packet)
-                packet_info = {'layer': 'UDP'}
-                
-        elif packet.haslayer(ICMP):
-            # ICMPv6 Layer
-            output_lines = _handle_icmp_packet(packet)
-            packet_info = {'layer': 'ICMPv6'}
-            
-        else:
-            # IPv6 with Unknown upper layer protocol
-            output_lines = _handle_ipv6_packet(packet)
-            packet_info = {'layer': 'IPv6'}
-            
-    else:
-        # Unknown packet type
-        output_lines = _handle_unknown_packet(packet)
-        packet_info = {'layer': 'Unknown'}
-    
-    # Print to console
-    for line in output_lines:
-        print(line)
-    
-    # Write to log file
-    for line in output_lines:
-        log_file_handle.write(line + "\n")
-    log_file_handle.flush()  # Ensure data is written immediately
-    
-    # Insert into database
+    if event is None:
+        return
+
+    result = event.to_dict()
+
+    # =================================================
+    # INFORMATION EVENT
+    # =================================================
+
+    if result["severity"] == "INFO":
+
+        print("\n" + "-" * 60)
+        print("INFORMATION EVENT")
+        print("-" * 60)
+
+        print(
+            f"Severity         : "
+            f"{result['severity']}"
+        )
+
+        print(
+            f"Message          : "
+            f"{result['message']}"
+        )
+
+        if result["source_ip"] is not None:
+
+            print(
+                f"Source IP        : "
+                f"{result['source_ip']}"
+            )
+
+        if result["source_mac"] is not None:
+
+            print(
+                f"Source MAC       : "
+                f"{result['source_mac']}"
+            )
+
+        if result["domain"] is not None:
+
+            print(
+                f"Domain           : "
+                f"{result['domain']}"
+            )
+
+        print("-" * 60)
+
+        return
+
+    # =================================================
+    # SECURITY ALERT
+    # =================================================
+
+    print("\n" + "!" * 60)
+    print("SECURITY ALERT")
+    print("!" * 60)
+
+    print(
+        f"Attack Type      : "
+        f"{result['attack_type']}"
+    )
+
+    print(
+        f"Severity         : "
+        f"{result['severity']}"
+    )
+
+    print(
+        f"Confidence       : "
+        f"{result['confidence']}"
+    )
+
+    print(
+        f"Risk Score       : "
+        f"{result['risk_score']}"
+    )
+
+    if result["source_ip"] is not None:
+
+        print(
+            f"Source IP        : "
+            f"{result['source_ip']}"
+        )
+
+    if result["source_mac"] is not None:
+
+        print(
+            f"Source MAC       : "
+            f"{result['source_mac']}"
+        )
+
+    if result["domain"] is not None:
+
+        print(
+            f"Domain           : "
+            f"{result['domain']}"
+        )
+
+    print(
+        f"Message          : "
+        f"{result['message']}"
+    )
+
+    print("!" * 60)
+
+
+# =====================================================
+# ARP PACKET DISPLAY
+# =====================================================
+
+def analyze_arp(features):
+    """
+    Display important ARP information.
+    """
+
+    print("\n" + "-" * 60)
+    print("ARP TRAFFIC")
+    print("-" * 60)
+
+    print(
+        f"Operation        : "
+        f"{features['arp_operation']}"
+    )
+
+    print(
+        f"Source IP        : "
+        f"{features['arp_src_ip']}"
+    )
+
+    print(
+        f"Source MAC       : "
+        f"{features['arp_src_mac']}"
+    )
+
+    print(
+        f"Destination IP   : "
+        f"{features['arp_dst_ip']}"
+    )
+
+    print(
+        f"Destination MAC  : "
+        f"{features['arp_dst_mac']}"
+    )
+
+
+# =====================================================
+# DNS PACKET DISPLAY
+# =====================================================
+
+def analyze_dns(features):
+    """
+    Display important DNS information.
+    """
+
+    print("\n" + "-" * 60)
+    print("DNS TRAFFIC")
+    print("-" * 60)
+
+    print(
+        f"Query            : "
+        f"{features['dns_query']}"
+    )
+
+    print(
+        f"Query Type       : "
+        f"{features['dns_query_type']}"
+    )
+
+    print(
+        f"Answers          : "
+        f"{features['dns_answers']}"
+    )
+
+    print(
+        f"Source IP        : "
+        f"{features['src_ip']}"
+    )
+
+    print(
+        f"Destination IP   : "
+        f"{features['dst_ip']}"
+    )
+
+    print(
+        f"Source Port      : "
+        f"{features['src_port']}"
+    )
+
+    print(
+        f"Destination Port : "
+        f"{features['dst_port']}"
+    )
+
+
+# =====================================================
+# NORMAL IPv4 PACKET DISPLAY
+# =====================================================
+
+def analyze_normal_packet(features):
+    """
+    Display compact information for normal traffic.
+    """
+
+    print(
+        f"[NORMAL TRAFFIC] "
+        f"{features['src_ip']} -> "
+        f"{features['dst_ip']} | "
+        f"{features['protocol']} | "
+        f"{features['packet_length']} Bytes"
+    )
+
+
+# =====================================================
+# PACKET CALLBACK
+# =====================================================
+
+def packet_callback(packet):
+    """
+    Called automatically by Scapy for every
+    captured packet.
+    """
+
+    # =================================================
+    # STEP 1 - RECORD PACKET
+    # =================================================
+
+    security_statistics.record_packet()
+
+
+    # =================================================
+    # STEP 2 - EXTRACT FEATURES
+    # =================================================
+
     try:
-        packet_data = parse_packet(packet)
-        insert_packet(packet_data)
-    except Exception as e:
-        print(f"Error inserting packet into database: {e}")
+
+        features = extract_features(packet)
+
+    except Exception as error:
+
+        print("\n[ERROR] Feature extraction failed")
+
+        print(
+            f"Error : {error}"
+        )
+
+        return
 
 
-def _handle_arp_packet(packet):
-    """
-    Handle ARP (Address Resolution Protocol) packets.
-    """
-    arp = packet[ARP]
-    lines = [
-        "=" * 60,
-        "ARP Packet Captured",
-        "=" * 60,
-        f"Source MAC       : {arp.hwsrc}",
-        f"Destination MAC  : {arp.hwdst}",
-        f"Source IP        : {arp.psrc}",
-        f"Destination IP   : {arp.pdst}",
-        f"Operation        : {'Request' if arp.op == 1 else 'Reply' if arp.op == 2 else 'Unknown'}",
-        f"Packet Length    : {len(packet)} Bytes",
-        ""
-    ]
-    return lines
+    # =================================================
+    # STEP 3 - DETECTION ENGINE
+    # =================================================
+
+    try:
+
+        detection_result = (
+            detection_engine.analyze_packet(
+                features
+            )
+        )
+
+    except Exception as error:
+
+        print("\n[ERROR] Detection engine failed")
+
+        print(
+            f"Error : {error}"
+        )
+
+        detection_result = None
 
 
-def _handle_ip_packet(packet):
-    """
-    Handle IPv4 packets without identified higher layer protocols.
-    """
-    ip = packet[IP]
-    lines = [
-        "=" * 60,
-        "IPv4 Packet Captured",
-        "=" * 60,
-        f"Source IP        : {ip.src}",
-        f"Destination IP   : {ip.dst}",
-        f"Protocol Number  : {ip.proto}",
-        f"TTL              : {ip.ttl}",
-        f"Packet Length    : {len(packet)} Bytes",
-        ""
-    ]
-    return lines
+    # =================================================
+    # STEP 4 - DISPLAY PACKET
+    # =================================================
+
+    # -------------------------------------------------
+    # ARP
+    # -------------------------------------------------
+
+    if packet.haslayer(ARP):
+
+        analyze_arp(features)
 
 
-def _handle_ipv6_packet(packet):
-    """
-    Handle IPv6 packets without identified higher layer protocols.
-    """
-    ipv6 = packet[IPv6]
-    lines = [
-        "=" * 60,
-        "IPv6 Packet Captured",
-        "=" * 60,
-        f"Source IP        : {ipv6.src}",
-        f"Destination IP   : {ipv6.dst}",
-        f"Next Header      : {ipv6.nh}",
-        f"Hop Limit        : {ipv6.hlim}",
-        f"Packet Length    : {len(packet)} Bytes",
-        ""
-    ]
-    return lines
+    # -------------------------------------------------
+    # DNS
+    # -------------------------------------------------
+
+    elif packet.haslayer(DNS):
+
+        analyze_dns(features)
 
 
-def _handle_tcp_packet(packet):
-    """
-    Handle TCP (Transmission Control Protocol) packets.
-    """
-    tcp = packet[TCP]
-    ip_layer = packet[IP] if packet.haslayer(IP) else packet[IPv6]
-    ip_version = "IPv4" if packet.haslayer(IP) else "IPv6"
-    
-    lines = [
-        "=" * 60,
-        "TCP Packet Captured",
-        "=" * 60,
-        f"Source IP        : {ip_layer.src}",
-        f"Destination IP   : {ip_layer.dst}",
-        f"IP Version       : {ip_version}",
-        f"Source Port      : {tcp.sport}",
-        f"Destination Port : {tcp.dport}",
-        f"Sequence Number  : {tcp.seq}",
-        f"Acknowledgment   : {tcp.ack}",
-        f"Flags            : {tcp.flags}",
-        f"Window Size      : {tcp.window}",
-        f"Packet Length    : {len(packet)} Bytes",
-        ""
-    ]
-    return lines
+    # -------------------------------------------------
+    # IPv4
+    # -------------------------------------------------
+
+    elif packet.haslayer(IP):
+
+        analyze_normal_packet(
+            features
+        )
 
 
-def _handle_udp_packet(packet):
-    """
-    Handle UDP (User Datagram Protocol) packets.
-    """
-    udp = packet[UDP]
-    ip_layer = packet[IP] if packet.haslayer(IP) else packet[IPv6]
-    ip_version = "IPv4" if packet.haslayer(IP) else "IPv6"
-    
-    lines = [
-        "=" * 60,
-        "UDP Packet Captured",
-        "=" * 60,
-        f"Source IP        : {ip_layer.src}",
-        f"Destination IP   : {ip_layer.dst}",
-        f"IP Version       : {ip_version}",
-        f"Source Port      : {udp.sport}",
-        f"Destination Port : {udp.dport}",
-        f"Length           : {udp.len}",
-        f"Checksum         : {udp.chksum}",
-        f"Packet Length    : {len(packet)} Bytes",
-        ""
-    ]
-    return lines
+    # =================================================
+    # STEP 5 - PROCESS SECURITY EVENT
+    # =================================================
+
+    if detection_result is not None:
+
+        # ---------------------------------------------
+        # Record statistics
+        # ---------------------------------------------
+
+        security_statistics.record_event(
+            detection_result
+        )
 
 
-def _handle_dns_packet(packet):
-    """
-    Handle DNS (Domain Name System) packets.
-    """
-    dns = packet[DNS]
-    ip_layer = packet[IP] if packet.haslayer(IP) else packet[IPv6]
-    ip_version = "IPv4" if packet.haslayer(IP) else "IPv6"
-    
-    # Extract DNS query/response type
-    dns_type = "Response" if dns.qr else "Query"
-    
-    lines = [
-        "=" * 60,
-        "DNS Packet Captured",
-        "=" * 60,
-        f"Source IP        : {ip_layer.src}",
-        f"Destination IP   : {ip_layer.dst}",
-        f"IP Version       : {ip_version}",
-        f"DNS Type         : {dns_type}",
-        f"Transaction ID   : {dns.id}",
-        f"Query Count      : {dns.qdcount}",
-        f"Answer Count     : {dns.ancount}",
-        f"Packet Length    : {len(packet)} Bytes",
-        ""
-    ]
-    return lines
+        # ---------------------------------------------
+        # Display event
+        # ---------------------------------------------
+
+        display_detection_event(
+            detection_result
+        )
 
 
-def _handle_icmp_packet(packet):
-    """
-    Handle ICMP/ICMPv6 (Internet Control Message Protocol) packets.
-    """
-    icmp = packet[ICMP]
-    ip_layer = packet[IP] if packet.haslayer(IP) else packet[IPv6]
-    ip_version = "IPv4" if packet.haslayer(IP) else "IPv6"
-    icmp_version = "ICMP" if packet.haslayer(IP) else "ICMPv6"
-    
-    lines = [
-        "=" * 60,
-        f"{icmp_version} Packet Captured",
-        "=" * 60,
-        f"Source IP        : {ip_layer.src}",
-        f"Destination IP   : {ip_layer.dst}",
-        f"IP Version       : {ip_version}",
-        f"Type             : {icmp.type}",
-        f"Code             : {icmp.code}",
-        f"Checksum         : {icmp.chksum}",
-        f"Packet Length    : {len(packet)} Bytes",
-        ""
-    ]
-    return lines
+        # ---------------------------------------------
+        # Save event to JSON
+        # ---------------------------------------------
+
+        try:
+
+            event_logger.log_event(
+                detection_result
+            )
+
+            print(
+                "[LOGGED] Security event saved"
+            )
+
+        except Exception as error:
+
+            print(
+                "[ERROR] Event logging failed"
+            )
+
+            print(
+                f"Error : {error}"
+            )
 
 
-def _handle_unknown_packet(packet):
-    """
-    Handle unknown or unclassified packets.
-    """
-    lines = [
-        "=" * 60,
-        "Unknown Packet Captured",
-        "=" * 60,
-        f"Packet Type      : Unknown",
-        f"Packet Length    : {len(packet)} Bytes",
-        f"Packet Summary   : {packet.summary()}",
-        ""
-    ]
-    return lines
-
+# =====================================================
+# START PACKET CAPTURE
+# =====================================================
 
 def start_capture():
     """
-    Starts packet sniffing and logs to file.
+    Start live network packet sniffing.
     """
 
     print("\n" + "=" * 60)
-    print("MODULE 1 : PACKET MONITORING")
+    print("MODULE 1 : REAL-TIME SECURITY MONITORING")
     print("=" * 60)
 
-    print(f"Monitoring Interface : {INTERFACE}")
-    print(f"Packet Limit         : {PACKET_LIMIT}")
-    print(f"Log File             : {LOG_FILE}")
+    print(
+        f"Monitoring Interface : "
+        f"{INTERFACE}"
+    )
 
-    print("\nWaiting for packets...\n")
+    print(
+        f"Packet Limit         : "
+        f"{PACKET_LIMIT}"
+    )
+
+    print(
+        f"Event Log            : "
+        f"{event_logger.log_file}"
+    )
+
+    print("=" * 60)
+
+    print(
+        "\nMonitoring started..."
+    )
+
+    print(
+        "Normal traffic will be shown compactly."
+    )
+
+    print(
+        "Information events will be shown separately."
+    )
+
+    print(
+        "Security alerts will be highlighted."
+    )
+
+    print(
+        "\nPress Ctrl+C to stop.\n"
+    )
+
+
+    # =================================================
+    # START SCAPY
+    # =================================================
 
     try:
-        # Initialize database
-        init_database()
-        print("Database initialized.\n")
-        
-        # Open log file for writing
-        with open(LOG_FILE, 'w') as log_file:
-            # Write header to log file
-            log_file.write("="*60 + "\n")
-            log_file.write("PACKET CAPTURE LOG\n")
-            log_file.write("="*60 + "\n")
-            log_file.write(f"Monitoring Interface : {INTERFACE}\n")
-            log_file.write(f"Packet Limit         : {PACKET_LIMIT}\n")
-            log_file.write("="*60 + "\n\n")
-            log_file.flush()
-            
-            sniff(
-                iface=INTERFACE,
-                prn=lambda pkt: packet_callback(pkt, log_file),
-                count=PACKET_LIMIT,
-                store=False
-            )
-        
-        print("\nPacket Capture Completed.")
-        print(f"Logs saved to: {LOG_FILE}")
-        print(f"Database: {DB_FILE}")
-    
-    except RuntimeError as e:
-        if "winpcap" in str(e).lower() or "not installed" in str(e).lower():
-            print("\n" + "=" * 60)
-            print("ERROR: Npcap/WinPcap is not installed!")
-            print("=" * 60)
-            print("\nNpcap is required for packet capture on Windows.")
-            print("\nTo fix this:")
-            print("1. Download Npcap from: https://nmap.org/npcap/")
-            print("2. Install it with administrator privileges")
-            print("3. Restart your computer")
-            print("4. Run this script again")
-            print("\nAlternatively, you can use Layer 3 (IP-level) sniffing by running:")
-            print("  python packet_capture_l3.py")
-            sys.exit(1)
-        else:
-            raise
 
+        sniff(
+            iface=INTERFACE,
+            prn=packet_callback,
+            count=PACKET_LIMIT,
+            store=False
+        )
+
+    except KeyboardInterrupt:
+
+        print(
+            "\n\nCapture stopped by user."
+        )
+
+    except Exception as error:
+
+        print(
+            "\n[ERROR] Packet capture failed"
+        )
+
+        print(
+            f"Error : {error}"
+        )
+
+        return
+
+
+    # =================================================
+    # SECURITY SUMMARY
+    # =================================================
+
+    security_statistics.display_summary()
+
+
+    # =================================================
+    # FINAL INFORMATION
+    # =================================================
+
+    print(
+        f"\nSecurity Log File : "
+        f"{event_logger.log_file}"
+    )
+
+    print(
+        "\nPacket Capture Completed."
+    )
+
+
+# =====================================================
+# MAIN
+# =====================================================
 
 if __name__ == "__main__":
+
     start_capture()

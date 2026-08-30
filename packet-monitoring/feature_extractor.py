@@ -9,7 +9,8 @@ from scapy.all import (
     ICMP,
     ARP,
     DNS,
-    DNSQR
+    DNSQR,
+    DNSRR
 )
 
 from packet_parser import parse_packet
@@ -127,7 +128,9 @@ def get_dns_query_type(packet):
             12: "PTR",
             15: "MX",
             16: "TXT",
-            28: "AAAA"
+            28: "AAAA",
+            65: "HTTPS"
+
         }
 
         return dns_types.get(
@@ -144,46 +147,83 @@ def get_dns_query_type(packet):
 
 def get_dns_answers(packet):
     """
-    Extract IPv4/IPv6 addresses from DNS answers.
+    Extract IPv4 and IPv6 addresses from DNS answer records.
 
-    Returns an empty list when the packet is a DNS query
-    or when there are no DNS answer records.
+    Supports Scapy DNS answer lists.
     """
 
     answers = []
 
-    # Packet does not contain DNS
+    # =================================================
+    # CHECK DNS LAYER
+    # =================================================
+
     if not packet.haslayer(DNS):
         return answers
 
     dns = packet[DNS]
 
-    # DNS query has no answer records
-    if dns.ancount is None or dns.ancount == 0:
+    # =================================================
+    # GET ANSWER SECTION
+    # =================================================
+
+    answer_section = dns.an
+
+    if answer_section is None:
         return answers
+
+    # =================================================
+    # SCAPY DNS ANSWER LIST
+    # =================================================
 
     try:
 
-        for i in range(int(dns.ancount)):
+        for record in answer_section:
 
-            answer = dns.an[i]
+            # -----------------------------------------
+            # A record = IPv4
+            # -----------------------------------------
 
-            if hasattr(answer, "rdata"):
+            if record.type == 1:
 
-                rdata = answer.rdata
+                if record.rdata is not None:
 
-                if isinstance(rdata, bytes):
-                    rdata = rdata.decode(
-                        errors="ignore"
+                    answers.append(
+                        str(record.rdata)
                     )
 
-                answers.append(str(rdata))
+            # -----------------------------------------
+            # AAAA record = IPv6
+            # -----------------------------------------
 
-    except Exception:
-        pass
+            elif record.type == 28:
+
+                if record.rdata is not None:
+
+                    answers.append(
+                        str(record.rdata)
+                    )
+
+    except TypeError:
+
+        # ---------------------------------------------
+        # Fallback if Scapy gives a single record
+        # instead of a list
+        # ---------------------------------------------
+
+        record = answer_section
+
+        if hasattr(record, "type"):
+
+            if record.type in [1, 28]:
+
+                if record.rdata is not None:
+
+                    answers.append(
+                        str(record.rdata)
+                    )
 
     return answers
-
 
 # =====================================================
 # MAIN FEATURE EXTRACTION FUNCTION
@@ -194,48 +234,51 @@ def extract_features(packet):
     Convert a Scapy packet into security-relevant features.
     """
 
-    # ---------------------------------------------
+    # -------------------------------------------------
     # Use existing packet parser
-    # ---------------------------------------------
+    # -------------------------------------------------
 
     parsed = parse_packet(packet)
 
-    # ---------------------------------------------
+    # -------------------------------------------------
     # Create feature dictionary
-    # ---------------------------------------------
+    # -------------------------------------------------
 
     features = {
 
-        # -----------------------------------------
+        # =============================================
         # Timestamp
-        # -----------------------------------------
+        # =============================================
 
         "timestamp": datetime.now().isoformat(),
 
-        # -----------------------------------------
+        # =============================================
         # Basic packet information
-        # -----------------------------------------
+        # =============================================
 
         "packet_length": parsed["packet_length"],
+
         "protocol": parsed["protocol"],
 
-        # -----------------------------------------
+        # =============================================
         # Ethernet
-        # -----------------------------------------
+        # =============================================
 
         "src_mac": parsed["src_mac"],
+
         "dst_mac": parsed["dst_mac"],
 
-        # -----------------------------------------
+        # =============================================
         # IP
-        # -----------------------------------------
+        # =============================================
 
         "src_ip": parsed["src_ip"],
+
         "dst_ip": parsed["dst_ip"],
 
-        # -----------------------------------------
-        # IP derived features
-        # -----------------------------------------
+        # =============================================
+        # IP-derived features
+        # =============================================
 
         "src_ip_private": is_private_ip(
             parsed["src_ip"]
@@ -247,30 +290,33 @@ def extract_features(packet):
 
         "ttl": get_ttl(packet),
 
-        # -----------------------------------------
+        # =============================================
         # Transport layer
-        # -----------------------------------------
+        # =============================================
 
         "src_port": parsed["src_port"],
+
         "dst_port": parsed["dst_port"],
 
         "tcp_flags": get_tcp_flags(packet),
 
-        # -----------------------------------------
+        # =============================================
         # ARP
-        # -----------------------------------------
+        # =============================================
 
         "arp_operation": get_arp_operation(packet),
 
         "arp_src_ip": parsed["arp_src_ip"],
+
         "arp_src_mac": parsed["arp_src_mac"],
 
         "arp_dst_ip": parsed["arp_dst_ip"],
+
         "arp_dst_mac": parsed["arp_dst_mac"],
 
-        # -----------------------------------------
+        # =============================================
         # DNS
-        # -----------------------------------------
+        # =============================================
 
         "dns_query": get_dns_query(packet),
 
@@ -326,7 +372,7 @@ def extract_features(packet):
     )
 
     # =================================================
-    # RETURN FEATURES
+    # RETURN
     # =================================================
 
     return features
