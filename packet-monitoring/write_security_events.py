@@ -34,6 +34,6 @@ def import_security_events(json_file_path):
 if __name__ == "__main__":
     json_path = os.path.join(
         os.path.dirname(__file__),
-        "C:\\Users\\shiva\\WorkArea\\Official\\Projects\\github_repos\\self-healing-zero-trust-network-security\\packet-monitoring\\logs\\security_events.json"
+        "logs/security_events.json"
     )
     import_security_events(json_path)
