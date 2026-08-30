@@ -238,9 +238,8 @@ def write_security_events_to_db(detection_result_json):
         print(f"Database file '{DB_FILE}' does not exist. Please initialize the database first.")
         return
     
-    # Read the JSON file
-    #with open(json_file_path, 'r') as f:
-    events = json.load(detection_result_json)
+    # Parse the security events
+    events = detection_result_json if isinstance(detection_result_json, list) else [detection_result_json]
     
     # Insert each event into the database
     for event in events:
