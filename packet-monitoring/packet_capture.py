@@ -48,7 +48,7 @@ from feature_extractor import extract_features
 from detection_engine import DetectionEngine
 from event_logger import EventLogger
 from security_statistics import SecurityStatistics
-from database import insert_detection
+from database import init_database, insert_detection
 
 # =====================================================
 # CREATE DETECTION ENGINE
@@ -422,26 +422,19 @@ def packet_callback(packet):
                 detection_result
             )
 
-            print(
-                "[LOGGED] Security event saved"
-            )
+            print("[LOGGED] Security event saved")
 
-            insert_detection(
-                detection_result.to_dict()
-            )
+            init_database()
+            print("[DB] SQLite database initialized")
+                        
+            insert_detection(detection_result.to_dict())
+            print("[DB] Security event inserted into database")
 
-            print(
-                "[DB] Security event inserted into database"
-            )
         except Exception as error:
 
-            print(
-                "[ERROR] Event logging failed"
-            )
+            print("[ERROR] Event logging failed")
 
-            print(
-                f"Error : {error}"
-            )
+            print(f"Error : {error}")
 
 
 # =====================================================
