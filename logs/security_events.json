@@ -1,0 +1,45 @@
+[
+    {
+        "timestamp": "2026-09-03T23:54:32.916851",
+        "event_type": "DEVICE_ISOLATED",
+        "details": {
+            "ip": "192.168.1.105",
+            "mac": "AA:BB:CC:DD:EE:FF",
+            "reason": "ARP_SPOOF detected"
+        }
+    },
+    {
+        "timestamp": "2026-09-03T23:54:32.918847",
+        "event_type": "HONEYPOT_STARTED",
+        "details": {
+            "host": "127.0.0.1",
+            "port": 8080
+        }
+    },
+    {
+        "timestamp": "2026-09-03T23:54:42.727673",
+        "event_type": "HONEYPOT_ACTIVITY",
+        "details": {
+            "source_ip": "127.0.0.1",
+            "method": "GET",
+            "path": "/test"
+        }
+    },
+    {
+        "timestamp": "2026-09-03T23:58:30.513872",
+        "event_type": "DEVICE_RESTORED",
+        "details": {
+            "ip": "192.168.1.105",
+            "mac": "AA:BB:CC:DD:EE:FF",
+            "reason": "Trust score recovered"
+        }
+    },
+    {
+        "timestamp": "2026-09-03T23:58:30.679038",
+        "event_type": "HONEYPOT_STOPPED",
+        "details": {
+            "host": "127.0.0.1",
+            "port": 8080
+        }
+    }
+]

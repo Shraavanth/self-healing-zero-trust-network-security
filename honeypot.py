@@ -2,10 +2,11 @@ import threading
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from logger import log_event
+
 
 HONEYPOT_HOST = "127.0.0.1"
 HONEYPOT_PORT = 8080
-
 
 honeypot_server = None
 honeypot_thread = None
@@ -15,11 +16,20 @@ honeypot_running = False
 class HoneypotHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        """Keep the default HTTP server output quiet."""
+        """Keep default HTTP server output quiet."""
         pass
 
     def do_GET(self):
         source = self.client_address[0]
+
+        log_event(
+            "HONEYPOT_ACTIVITY",
+            {
+                "source_ip": source,
+                "method": "GET",
+                "path": self.path
+            }
+        )
 
         print("\n[HONEYPOT ACTIVITY]")
         print(f"Time: {datetime.now().isoformat()}")
@@ -47,8 +57,21 @@ class HoneypotHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         source = self.client_address[0]
 
-        content_length = int(self.headers.get("Content-Length", 0))
+        content_length = int(
+            self.headers.get("Content-Length", 0)
+        )
+
         body = self.rfile.read(content_length)
+
+        log_event(
+            "HONEYPOT_ACTIVITY",
+            {
+                "source_ip": source,
+                "method": "POST",
+                "path": self.path,
+                "request_size": len(body)
+            }
+        )
 
         print("\n[HONEYPOT POST ACTIVITY]")
         print(f"Time: {datetime.now().isoformat()}")
@@ -90,6 +113,14 @@ def start_honeypot():
         honeypot_thread.start()
         honeypot_running = True
 
+        log_event(
+            "HONEYPOT_STARTED",
+            {
+                "host": HONEYPOT_HOST,
+                "port": HONEYPOT_PORT
+            }
+        )
+
         print(
             f"[HONEYPOT] Started on "
             f"http://{HONEYPOT_HOST}:{HONEYPOT_PORT}"
@@ -115,6 +146,14 @@ def stop_honeypot():
 
     honeypot_server.shutdown()
     honeypot_server.server_close()
+
+    log_event(
+        "HONEYPOT_STOPPED",
+        {
+            "host": HONEYPOT_HOST,
+            "port": HONEYPOT_PORT
+        }
+    )
 
     honeypot_server = None
     honeypot_thread = None
