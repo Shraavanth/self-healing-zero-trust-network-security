@@ -216,3 +216,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project runtime data
+*.db
+*.sqlite
+*.sqlite3
+
+# Runtime logs and state
+logs/*.json
+**/*_state.json
+**/*_logs.json
+**/response_logs.json
+**/repeat_offenders.json
+**/isolated_devices.json
+**/firewall_rules.json

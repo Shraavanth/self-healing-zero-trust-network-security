@@ -54,7 +54,9 @@ class DetectionEngine:
         # ARP RESULT
         # =============================================
 
-        if result.get("attack_type") == "POSSIBLE_ARP_SPOOFING":
+        if result.get(
+            "attack_type"
+        ) == "POSSIBLE_ARP_SPOOFING":
 
             return DetectionEvent(
 
@@ -68,6 +70,10 @@ class DetectionEngine:
 
                 source_mac=result.get(
                     "source_mac"
+                ),
+
+                domain=result.get(
+                    "domain"
                 ),
 
                 severity=result.get(
@@ -98,12 +104,22 @@ class DetectionEngine:
         # DNS RESULT
         # =============================================
 
-        if result.get("attack_type") == "POSSIBLE_DNS_SPOOFING":
+        if result.get(
+            "attack_type"
+        ) == "POSSIBLE_DNS_SPOOFING":
 
             return DetectionEvent(
 
                 attack_type=result.get(
                     "attack_type"
+                ),
+
+                source_ip=result.get(
+                    "source_ip"
+                ),
+
+                source_mac=result.get(
+                    "source_mac"
                 ),
 
                 domain=result.get(
@@ -138,12 +154,22 @@ class DetectionEngine:
         # PHISHING RESULT
         # =============================================
 
-        if result.get("attack_type") == "POSSIBLE_PHISHING":
+        if result.get(
+            "attack_type"
+        ) == "POSSIBLE_PHISHING":
 
             return DetectionEvent(
 
                 attack_type=result.get(
                     "attack_type"
+                ),
+
+                source_ip=result.get(
+                    "source_ip"
+                ),
+
+                source_mac=result.get(
+                    "source_mac"
                 ),
 
                 domain=result.get(
@@ -256,6 +282,49 @@ class DetectionEngine:
 
             if result is not None:
 
+                # -------------------------------------
+                # Identify the actual DNS client/device
+                # -------------------------------------
+
+                # DNS response:
+                #
+                # DNS server -> Client
+                #
+                # Example:
+                # 192.168.1.1 -> 192.168.1.5
+                #
+                # The client is dst_ip.
+
+                if features.get("src_port") == 53:
+
+                    result["source_ip"] = features.get(
+                        "dst_ip"
+                    )
+
+                    result["source_mac"] = features.get(
+                        "dst_mac"
+                    )
+
+                else:
+
+                    # DNS request:
+                    #
+                    # Client -> DNS server
+                    #
+                    # Example:
+                    # 192.168.1.5 -> 192.168.1.1
+                    #
+                    # The client is src_ip.
+
+                    result["source_ip"] = features.get(
+                        "src_ip"
+                    )
+
+                    result["source_mac"] = features.get(
+                        "src_mac"
+                    )
+
+
                 return self.create_event(
                     result
                 )
@@ -276,6 +345,20 @@ class DetectionEngine:
             )
 
             if result is not None:
+
+                # -------------------------------------
+                # Associate phishing event with
+                # the device that generated the
+                # DNS query.
+                # -------------------------------------
+
+                result["source_ip"] = features.get(
+                    "src_ip"
+                )
+
+                result["source_mac"] = features.get(
+                    "src_mac"
+                )
 
                 return self.create_event(
                     result
